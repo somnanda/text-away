@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Text Now</title>
+</head>
+<body>
+
+Your message status was: {{.}}
+
+<form name="home" action="/home" method="POST" accept-charset="utf-8">
+
+    <h1> Text Away </h1>
+    <p>
+        <label for="phonenumber" class="phone" data-icon="u">Phone Number </label>
+        <input id="phonenumber" name="toNumber" required="required" type="tel" placeholder="+1 416-111-2222" />
+    </p>
+
+    <p>
+
+        <textarea class="form-control" rows="6" cols="50" maxlength="140" placeholder="Enter Your Text Message Here..." id="message" name="messageBody" autocomplete="off"></textarea>
+    </p>
+
+    <p class="send button">
+        <input type="submit" value="Send Text"/>
+    </p>
+    <p class="change_link">
+        Already a member ?
+        <a href="login" class="to_register"> Go and log in </a>
+    </p>
+
+</form>
+
+</body>
+</html>
+
