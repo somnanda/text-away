@@ -19,7 +19,7 @@ func SendTextWithTwilio(toNumber string, messageBody string) string {
 	// Prepare request body for your text message
 	v := url.Values{}
 	v.Set("To", toNumber)
-	v.Set("From", "+16475572762")
+	v.Set("From", "") //Your Twilio account number
 	v.Set("Body", messageBody)
 	requestbody := *strings.NewReader(v.Encode())
 
