@@ -5,14 +5,16 @@ import (
 	"log"
 	"github.com/julienschmidt/httprouter"
 	"regexp"
-	"textnow/src/controller"
 	"html/template"
+	"github.com/text-away/src/utils"
 )
 
 var tpl *template.Template
+var apiAccount utils.AccountInfo
 
 func init() {
 	tpl = template.Must(template.ParseGlob("./src/static/*.html"))
+	apiAccount = utils.LoadConfiguration("properties.json")
 }
 
 func GetSignup(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
@@ -73,7 +75,7 @@ func SendText(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 
 		reg := regexp.MustCompile("[^0-9a-zA-Z+]+")
 		twilioPhone := reg.ReplaceAllString(phone, "")
-		textStatus = controller.SendTextWithTwilio(twilioPhone, message)
+		textStatus = SendTextWithTwilio(twilioPhone, message)
 
 	} else {
 		textStatus = "Please enter a valid phone number"

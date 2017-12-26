@@ -1,25 +1,26 @@
 package controller
 
 import (
-	"encoding/json"
-	"fmt"
-	"io/ioutil"
-	"net/http"
 	"net/url"
 	"strings"
+	"net/http"
+	"io/ioutil"
+	"encoding/json"
+	"log"
 )
 
 func SendTextWithTwilio(toNumber string, messageBody string) string {
 
 	// Provide API Account Info
-	accountSid := ""
-	authToken := ""
+	accountSid := apiAccount.AccountId
+	authToken := apiAccount.AuthToken
+
 	urlStr := "https://api.twilio.com/2010-04-01/Accounts/" + accountSid + "/Messages.json"
 
 	// Prepare request body for your text message
 	v := url.Values{}
 	v.Set("To", toNumber)
-	v.Set("From", "") //Your Twilio account number
+	v.Set("From", "")
 	v.Set("Body", messageBody)
 	requestbody := *strings.NewReader(v.Encode())
 
@@ -31,7 +32,6 @@ func SendTextWithTwilio(toNumber string, messageBody string) string {
 	// Initiate Twilio API call
 	client := &http.Client{}
 	resp, _ := client.Do(req)
-	fmt.Println(resp)
 
 	// Get Response and status
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
@@ -39,10 +39,10 @@ func SendTextWithTwilio(toNumber string, messageBody string) string {
 		bodyBytes, _ := ioutil.ReadAll(resp.Body)
 		err := json.Unmarshal(bodyBytes, &data)
 		if err == nil {
-			fmt.Println(data["sid"])
+			log.Println(data["sid"])
 		}
 	} else {
-		fmt.Println(resp.Status)
+		log.Println(resp.Status)
 	}
 	return resp.Status
 }
