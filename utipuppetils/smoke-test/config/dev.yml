@@ -1,0 +1,8 @@
+env:
+  url: https://ssouat.citco.com/siteminderagent/forms/shim.fcc?TYPE=33554433&REALMOID=06-000ec434-5124-179a-a931-57200a7d901d&GUID=&SMAUTHREASON=0&METHOD=GET&SMAGENTNAME=-SM-NMhJan2lAXgYpyzfdLfUYQDIoAW1B82ftcYQ3tGFI8dujID%2fXbwvFFu5YiLufCZM&TARGET=-SM-HTTPS%3a%2f%2fssouat%2ecitco%2ecom%2faffwebservices%2fredirectjsp%2farcotredirect%2ejsp%3fSPID%3dWaterfall_DEV_SP%26RelayState%3dhttps-%3A-%2F-%2Fwaterfall%2edev%2eint%2ecsgdev01%2ecitcosvc%2ecom-%2F%26SMPORTALURL%3dhttps-%3A-%2F-%2Fssouat%2ecitco%2ecom-%2Faffwebservices-%2Fpublic-%2Fsaml2sso%26SAMLTRANSACTIONID%3d1546afc3--13495f7c--0a7649ea--f2bc0398--ce42c5af--edc2
+  vault: DEV-CSG-CWF-SYNTHETIC-CHECK
+  nexa: https://services-ext.citco.com/alert/29
+timeouts:
+  default_timeout: 5000
+  short_timeout: 5000
+  long_timeout: 60000

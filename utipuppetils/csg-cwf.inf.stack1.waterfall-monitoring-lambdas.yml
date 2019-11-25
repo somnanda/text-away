@@ -1,0 +1,311 @@
+AWSTemplateFormatVersion: 2010-09-09
+Transform: AWS::Serverless-2016-10-31
+Description: WaterFall Ops Lambdas
+
+Parameters:
+  SystemId:
+    Description: distinguish system IT assets and used as a part of names in AWS services
+    Type: String
+  EnvTag:
+    Default: DEV
+    Description: Name of the Environment.
+    MaxLength: "64"
+    MinLength: "1"
+    Type: String
+    AllowedValues:
+      - DEV
+      - DEV2
+      - DEV3
+      - DEV4
+      - DEV5
+      - DEV6
+      - DEV10
+      - DEV11
+      - DEVDR
+      - QAD
+      - IST
+      - QAT
+      - UAT
+      - PAL
+      - PRD
+      - PRDDR
+      - RSH
+  VPC:
+    Description: VPC
+    Type: AWS::EC2::VPC::Id
+  PrivateSubnet1:
+    Description: Subnets
+    Type: AWS::EC2::Subnet::Id
+  PrivateSubnet2:
+    Description: Subnets
+    Type: AWS::EC2::Subnet::Id
+  ## From Pipeline Parameter Override
+  ChildTemplateBucket:
+    Description: "S3 Artifact Bucket"
+    Type: String
+
+  ChildTemplateKey:
+    Description: "Folder containing Cloudformation templates"
+    Type: String
+
+  EnvironmentType:
+    Description: Defines if it's the main or DR site
+    Type: String
+    Default: PRIMARY
+    AllowedValues:
+      - PRIMARY
+      - DR
+
+Mappings:
+  EnvMap:
+    DEV:
+      Name: dev
+    DEV2:
+      Name: dev2
+    DEV3:
+      Name: dev3
+    DEV4:
+      Name: dev4
+    DEV5:
+      Name: dev5
+    DEV10:
+      Name: dev10
+    DEV11:
+      Name: dev11
+    QAD:
+      Name: qad
+    IST:
+      Name: ist
+    QAT:
+      Name: qat
+    UAT:
+      Name: uat
+    PAL:
+      Name: pal
+    PRDDR:
+      Name: prddr
+    PRD:
+      Name: prd
+    DEVDR:
+      Name: devdr
+    RSH:
+      Name: rsh
+
+  SubscriptionsPerEnvironment:
+    DEV:
+      List:
+        - Endpoint: "cnanda@citco.com"
+          Protocol: email
+    PRD:
+      List:
+        - Endpoint: "waterfalldev@citco.com"
+          Protocol: email
+
+Globals:
+  Function:
+    MemorySize: 128
+    Timeout: 300
+    VpcConfig:
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      SecurityGroupIds:
+        - !Ref LambdaSecurityGroup
+
+Resources:
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref VPC
+      GroupDescription: Security Group for Lambda
+      # SecurityGroupIngress:
+      # - IpProtocol: "-1"
+      #   CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: "-1"
+          CidrIp: 0.0.0.0/0
+
+  LambdaRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              # AWS:
+              #   - '359772415770'
+              Service:
+                - "lambda.amazonaws.com"
+                - "events.amazonaws.com"
+                - "sns.amazonaws.com"
+            Action: "sts:AssumeRole"
+      Path: /
+      Policies:
+        - PolicyName: EC2
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Resource: "*"
+                Effect: Allow
+                Action:
+                  - "ec2:CreateTags"
+                  - "ec2:DescribeImages"
+                  - "ec2:DescribeInstances"
+                  - "ec2:DescribeSubnets"
+        - PolicyName: S3
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Resource: "arn:aws:s3:::*csg-cwf*/*"
+                Effect: Allow
+                Action:
+                  - "s3:*"
+        - PolicyName: SecretsManager
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Resource: "*"
+                Effect: Allow
+                Action:
+                  - "secretsmanager:DescribeSecret"
+                  - "secretsmanager:GetSecretValue"
+        - PolicyName: DynamoDb
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Resource: !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/*_cwf_*
+                Effect: Allow
+                Action:
+                  - "dynamodb:*"
+        - PolicyName: allowXRay
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Resource: "*"
+                Effect: Allow
+                Action:
+                  - "xray:*"
+        - PolicyName: Lambda
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Resource: "*"
+                Effect: Allow
+                Action:
+                  - "lambda:*"
+        - PolicyName: KMS
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "kms:DescribeKey"
+                  - "kms:GenerateDataKey*"
+                  - "kms:Encrypt"
+                  - "kms:ReEncrypt*"
+                  - "kms:Decrypt"
+                Resource:
+                  # DEV CSG-DefaultKey
+                  - arn:aws:kms:eu-west-1:911962207156:key/7d9f74cc-8299-465f-a022-0440a3675dbb
+                  - arn:aws:kms:eu-west-2:911962207156:key/f3cfff13-6065-407f-ab7e-cdc7374d94fb
+                  # UAT CSG-DefaultKey
+                  - arn:aws:kms:eu-west-1:684997503032:key/42c917fd-2c0a-4071-8646-bd5f0051f693
+                  - arn:aws:kms:eu-west-2:684997503032:key/03127008-8bdb-49e5-b65e-6464a87cbd02
+                  # PAL CSG-DefaultKey
+                  - arn:aws:kms:eu-west-1:858852530583:key/e3bbb6e4-4078-4c81-8b2a-5a57b89b4638
+                  - arn:aws:kms:eu-west-2:858852530583:key/2b4a9b1f-4661-4a05-84fe-a69fd274847a
+                  # PRD CSG-DefaultKey
+                  - arn:aws:kms:eu-west-1:261263252453:key/4a2bd0ca-48e3-4186-b7c8-87037d1d6af2
+                  - arn:aws:kms:eu-west-2:261263252453:key/5ad1bcd6-632e-48b6-a423-5d8eb2889e62
+        - PolicyName: LambdaFullAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "logs:CreateLogGroup"
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Resource: "arn:aws:logs:*:*:*"
+              - Effect: Allow
+                Action:
+                  - events:*
+                  - route53:*
+                  - sns:*
+                  - cloudformation:*
+                Resource:
+                  - "*"
+              - Effect: Allow
+                Action:
+                  - "codepipeline:AcknowledgeJob"
+                  - "codepipeline:GetJobDetails"
+                  - "codepipeline:PollForJobs"
+                  - "codepipeline:PutJobFailureResult"
+                  - "codepipeline:PutJobSuccessResult"
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - "sts:AssumeRole"
+                Resource:
+                  - "arn:aws:iam::359772415770:role/ITSEC-PipelineRemoteUpdate"
+              - Effect: Allow
+                Action:
+                  - "sts:AssumeRole"
+                  - "iam:PassRole"
+                Resource:
+                  - "*"
+
+  CWFSmokeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub
+        - ${Env}-${SystemId}-smoke-test
+        - { Env: !FindInMap [EnvMap, !Ref EnvTag, "Name"] }
+      Handler: index.handler
+      Runtime: nodejs8.10
+      CodeUri: ./lambda/smoke-test
+      MemorySize: 1024
+      Environment:
+        Variables:
+          ENV: !Ref EnvTag
+          NODE_ENV: !Ref EnvTag
+          SNS_TOPIC_EMAIL_NAME: !GetAtt WaterfallSNSTopicEMAIL.TopicName
+          SNS_TOPIC_EMAIL_ARN: !Ref WaterfallSNSTopicEMAIL
+      Role: !GetAtt LambdaRole.Arn
+      Tags:
+        Env: !Ref EnvTag
+
+  LambdaEventsPermissions:
+    Type: "AWS::Lambda::Permission"
+    Properties:
+      Action: "lambda:InvokeFunction"
+      FunctionName: !Ref CWFSmokeFunction
+      Principal: events.amazonaws.com
+
+  ScheduledRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub
+        - ${Env}-${SystemId}-monitoring-rule
+        - { Env: !FindInMap [EnvMap, !Ref EnvTag, "Name"] }
+      Description: !Sub "${EnvTag} ScheduledRule"
+      ScheduleExpression: "rate(10 minutes)"
+      State: "ENABLED"
+      Targets:
+        - Arn: !GetAtt CWFSmokeFunction.Arn
+          Id: CWFSmokeFunction
+
+  WaterfallSNSTopicEMAIL:
+    Type: "AWS::SNS::Topic"
+    Properties:
+      TopicName: CSG-CWF-Synthetic-Test
+      DisplayName: CSG-CWF-Synthetic-Test
+      Subscription: !FindInMap [SubscriptionsPerEnvironment, !Ref EnvTag, List]
+
+Outputs:
+  SNSTopicEmail:
+    Description: CSG-CWF-Synthetic-Test-Notification Topic Details
+    Export:
+      Name: SNSTopicEmail
+    Value: !Ref WaterfallSNSTopicEMAIL
