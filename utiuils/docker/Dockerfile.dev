@@ -1,0 +1,35 @@
+FROM phusion/baseimage:latest
+CMD ["/sbin/my_init"]
+
+
+COPY . /opt/app/
+WORKDIR /opt/app
+
+# Run APT update & install commands
+RUN apt-get -qq update
+RUN apt-get -qq install curl \
+                        vim \
+                        git \
+                        net-tools \
+                        ruby \
+                        figlet \
+                        openssh-server
+
+# Enable SSH on baseimage (disabled by default)
+RUN rm -f /etc/service/sshd/down
+RUN /etc/my_init.d/00_regen_ssh_host_keys.sh
+
+# Run User Admin commands
+RUN echo 'root:password' >> /root/passwdfile
+RUN useradd -m -G sudo csgdev01 && \
+    echo 'csgdev01:pass00' >> /root/passwdfile
+RUN chpasswd -c SHA512 < /root/passwdfile && \
+    rm /root/passwdfile
+
+# Expose port 22 for SSH tunneling
+EXPOSE 22
+
+# Clean up APT when done.
+RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+ENTRYPOINT /opt/app/docker/init.sh && /bin/bash

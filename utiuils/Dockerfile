@@ -1,0 +1,8 @@
+FROM node:9-alpine
+
+COPY . /opt/app
+WORKDIR /opt/app
+
+RUN npm install
+
+CMD ["npm", "run", "start"]

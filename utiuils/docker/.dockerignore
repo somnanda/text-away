@@ -1,0 +1,10 @@
+coverage
+node_modules
+.editorconfig
+.eslintignore
+.eslintrc.js
+.gitignore
+buildspec.yml
+Dockerfile
+README
+*.test.js

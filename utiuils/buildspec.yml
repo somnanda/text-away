@@ -1,0 +1,22 @@
+version: 0.2
+
+phases:
+  install:
+    commands:
+      - echo Downloading dependencies
+      - apt-get update
+      - apt-get install default-jre -y
+      - npm install
+  build:
+    commands:
+      - npm run test-suite       
+
+  post_build:
+    commands:
+      - echo Finished Running Tests
+      - echo Report Generated
+
+artifacts:
+  files:
+    - '**/*'
+  type: None

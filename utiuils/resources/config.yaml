@@ -1,0 +1,28 @@
+environment:  development
+url:
+    dev:  https://waterfall.dev.int.csgdev01.citcosvc.com/
+    dev2: https://waterfall.dev2.int.csgdev01.citcosvc.com/
+    dev3: https://waterfall.dev3.int.csgdev01.citcosvc.com/
+    dev4: https://waterfall.dev4.int.csgdev01.citcosvc.com/
+    dev5: https://waterfall.dev5.int.csgdev01.citcosvc.com/
+    dev6: https://waterfall.dev6.int.csgdev01.citcosvc.com/
+    dev7: https://waterfall.dev7.int.csgdev01.citcosvc.com/
+    qad:  https://waterfall.qad.int.csgdev01.citcosvc.com/
+    qat:  https://waterfall.qat.int.csgtest01.citcosvc.com/
+    uat:  https://waterfall.uat.int.csgtest01.citcosvc.com/
+    prd:  https://waterfall.prd.int.csgprod01.citcosvc.com/
+api:
+    dev:  https://waterfall.dev.srvs.int.csgdev01.citcosvc.com/
+    qad:  https://waterfall.qad.srvs.int.csgdev01.citcosvc.com/
+    qat:  https://waterfall.qat.srvs.int.csgtest01.citcosvc.com/
+    uat:  https://waterfall.uat.srvs.int.csgtest01.citcosvc.com/
+username: cwf_dev_deladmin
+password: Xjj4@DLQp2
+usernameSecond: cwf_dev_tier1
+passwordSecond: Kf$dH1FaBm
+usernameThird: cwf_dev_tier2
+passwordThird: 8HfXQq#P$r
+timeouts:
+    default_timeout:  5000
+    short_timeout:  5000
+    long_timeout: 60000
