@@ -1,0 +1,73 @@
+{
+  "name": "cwf-api-tests",
+  "version": "1.0.0",
+  "description": "Integration test project",
+  "main": "index.js",
+  "scripts": {
+    "adhoc": "mocha --compilers js:babel-core/register --timeout 80000 __tests__/adhoc/*",
+    "test": "npm install && node generateCredentials.js",
+    "core-api-tests": "mocha --compilers js:babel-core/register --timeout 80000 __tests__/core-api-tests/*  --reporter mocha-allure-reporter",
+    "pen-tests": "mocha --compilers js:babel-core/register --timeout 80000 __tests__/pen-tests/* --reporter mocha-allure-reporter",
+    "jest": "jest --coverageDirectory=output/coverage/jest"
+  },
+  "jest": {
+    "coverageReporters": [
+      "text",
+      "html"
+    ],
+    "reporters": [
+      "default",
+      [
+        "./node_modules/jest-html-reporter",
+        {
+          "outputPath": "./output/test-report.html",
+          "pageTitle": "API Test Report",
+          "theme": "darkTheme",
+          "includeConsoleLog": true,
+          "includeFailureMsg": true
+        }
+      ]
+    ]
+  },
+  "author": "som.nanda",
+  "license": "ISC",
+  "devDependencies": {
+    "aws-sdk": "^2.387.0",
+    "axios": "^0.18.0",
+    "axios-cookiejar-support": "^0.4.2",
+    "babel-core": "^6.26.3",
+    "babel-jest": "^23.2.0",
+    "babel-plugin-transform-async-to-generator": "^6.24.1",
+    "babel-plugin-transform-runtime": "^6.23.0",
+    "babel-preset-env": "^1.7.0",
+    "chai": "^4.1.2",
+    "chai-json-schema": "^1.5.0",
+    "chakram": "^1.5.0",
+    "cheerio": "^1.0.0-rc.2",
+    "csg-cwf-shared-components": "git+https://git-codecommit.eu-west-1.amazonaws.com/v1/repos/csg-cwf-shared-components",
+    "form-data": "^2.3.2",
+    "frisby": "^2.0.16",
+    "fs": "0.0.1-security",
+    "global-tunnel-ng": "^2.5.4",
+    "http-proxy": "^1.17.0",
+    "jest-html-reporter": "^2.4.2",
+    "jest-report": "^0.1.11",
+    "js-yaml": "^3.12.0",
+    "lodash": "^4.17.11",
+    "mocha": "^5.2.0",
+    "mocha-allure-reporter": "^1.4.0",
+    "moment": "^2.24.0",
+    "path": "^0.12.7",
+    "proxy-agent": "^3.0.1",
+    "python-shell": "^1.0.7",
+    "qs": "^6.5.2",
+    "request": "^2.87.0",
+    "shelljs": "^0.8.2",
+    "superagent": "^3.8.3",
+    "superagent-prefix": "0.0.2",
+    "superagent-proxy": "^1.0.3",
+    "superagent-use": "^0.1.0",
+    "syswide-cas": "^5.2.0",
+    "tough-cookie": "^2.4.3"
+  }
+}
