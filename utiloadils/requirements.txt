@@ -1,0 +1,6 @@
+Load Test Project with Locust.IO
+pyyaml==3.12
+pyexcel
+itertools
+random
+xlsxwriter

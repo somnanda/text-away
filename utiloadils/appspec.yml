@@ -1,0 +1,28 @@
+version: 0.0
+os: linux
+files:
+  - source: locustfile.py
+    destination: /etc/locust
+  - source: utilities
+    destination: /etc/locust/utilities
+  - source: requirements.txt
+    destination: /etc/locust
+  - source: configs
+    destination: /etc/locust/configs
+  - source: target_url.txt
+    destination: /etc/locust
+  - source: pool
+    destination: /etc/locust/pool
+
+hooks:
+  BeforeInstall:
+    - location: scripts/stop_locust.sh
+      timeout: 180
+      runas: root
+    - location: scripts/cleanup_locustfile.sh
+      timeout: 180
+      runas: root
+  AfterInstall:
+    - location: scripts/start_locust.sh
+      timeout: 180
+      runas: root
