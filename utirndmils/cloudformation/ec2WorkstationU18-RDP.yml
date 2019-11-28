@@ -1,0 +1,346 @@
+--- 
+AWSTemplateFormatVersion: "2010-09-09"
+Parameters: 
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: The VPC.
+
+  EC2Subnet:
+    Description: The subnets to place database instances in.
+    Type: String
+
+  KeyName:
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
+    Type: AWS::EC2::KeyPair::KeyName
+    ConstraintDescription: must be the name of an existing EC2 KeyPair.
+
+  InstanceType:
+    Description: WebServer EC2 instance type
+    Type: String
+    Default: t2.micro
+
+  DeveloperName:
+    Type: String
+    Description: "Name of developer running the stack"    
+Resources: 
+  
+  EC2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub CSG-CWF-${DeveloperName}-WS-EC2SG
+      VpcId: !Ref VpcId
+      GroupDescription: Enable SSH access via port 22
+      SecurityGroupIngress:
+      - CidrIp: 10.0.0.0/8
+        IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22  
+      - CidrIp: 10.0.0.0/8
+        IpProtocol: tcp
+        FromPort: 3000
+        ToPort: 4000        
+      - CidrIp: 10.0.0.0/8
+        IpProtocol: tcp
+        FromPort: 8065
+        ToPort: 9000
+      - CidrIp: 10.0.0.0/8
+        IpProtocol: tcp
+        FromPort: 443
+        ToPort: 443
+      - CidrIp: 10.0.0.0/8
+        IpProtocol: icmp
+        FromPort: 8
+        ToPort: -1
+      - CidrIp: 172.23.128.0/22
+        IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22        
+      - CidrIp: 172.23.128.0/22
+        IpProtocol: tcp
+        FromPort: 8065
+        ToPort: 9000 
+      - CidrIp: 172.23.128.0/22
+        IpProtocol: tcp
+        FromPort: 3000
+        ToPort: 4000      
+      - CidrIp: 172.23.128.0/22
+        IpProtocol: tcp
+        FromPort: 443
+        ToPort: 443
+      - CidrIp: 172.23.128.0/22
+        IpProtocol: icmp
+        FromPort: 8
+        ToPort: -1
+      - CidrIp: 172.23.24.0/22
+        IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22        
+      - CidrIp: 172.23.24.0/22
+        IpProtocol: tcp
+        FromPort: 8065
+        ToPort: 9000
+      - CidrIp: 172.23.24.0/22
+        IpProtocol: tcp
+        FromPort: 443
+        ToPort: 443  
+      - CidrIp: 172.23.24.0/22
+        IpProtocol: icmp
+        FromPort: 8
+        ToPort: -1
+  
+  EC2Role: 
+    Properties: 
+      RoleName: !Sub CSG-CWF-${DeveloperName}-WS-ROLE
+      AssumeRolePolicyDocument: 
+        Statement: 
+          - 
+            Action: 
+              - "sts:AssumeRole"
+            Effect: Allow
+            Principal: 
+              Service: 
+                - ec2.amazonaws.com
+        Version: "2012-10-17"      
+      ManagedPolicyArns: 
+        - "arn:aws:iam::aws:policy/IAMReadOnlyAccess"
+        - "arn:aws:iam::aws:policy/AWSCodeCommitPowerUser"
+        - "arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess"
+        - "arn:aws:iam::aws:policy/CloudWatchFullAccess"
+        - "arn:aws:iam::aws:policy/AmazonEC2FullAccess"
+        - "arn:aws:iam::aws:policy/AWSXrayFullAccess" 
+        - "arn:aws:iam::aws:policy/AWSLambdaFullAccess"
+        - "arn:aws:iam::aws:policy/SecretsManagerReadWrite"
+        - "arn:aws:iam::911962207156:policy/CSG-CustomKMSPolicy"
+    Type: "AWS::IAM::Role"
+  InstanceProfile: 
+    Properties: 
+      Path: /
+      Roles: 
+        - !Ref EC2Role
+    Type: "AWS::IAM::InstanceProfile"
+
+  EC2Instance: 
+    Metadata: 
+      AWS::CloudFormation::Init: 
+        configSets: 
+          ascending: 
+            - "config1"
+            - "config2"
+        config1:         
+          files:             
+            /home/ubuntu/runMe.sh:
+              content: !Sub |
+                #!/bin/bash -xe 
+                sudo apt-get -y update
+                sudo apt-get -y install xrdp
+                sudo apt-get -y install mate-core mate-desktop-environment mate-notification-daemon vnc4server
+                sudo sed -i.bak '/fi/a \n mate-session \n' /etc/xrdp/startwm.sh
+                sudo ufw allow 3389/tcp
+                sudo /etc/init.d/xrdp restart
+                echo -e "Citco123\nCitco123" | sudo passwd ubuntu
+                printf '\n\n\n\n ==============You can RDP now while setup continues in the background================= \n\n\n\n'
+                bash ~/ec2setup/setup.sh
+              mode: "000777"
+              owner: "ubuntu"
+              group: "ubuntu"
+            /home/ubuntu/ec2setup/setup.sh:
+              content: !Sub |
+                #!/bin/bash -xe
+                
+                echo "1" > ~/_setup_in_progress_please_wait
+                #installAwsCli:
+                printf '\n\n\n\n ==============installAwsCli================= \n\n\n\n'
+                sudo apt -y install awscli > /dev/null
+                #installPython:
+                printf '\n\n\n\n ==============installPython================= \n\n\n\n'
+                sudo apt -y install python-pip > /dev/null
+                sudo pip install boto3 openpyxl
+                # installNVM:
+                printf '\n\n\n\n ==============installNVM================= \n\n\n\n'
+                sudo apt-get -y install build-essential libssl-dev
+                curl https://raw.githubusercontent.com/creationix/nvm/v0.25.0/install.sh | bash
+                source ~/.nvm/nvm.sh
+                source ~/.profile
+                source ~/.bashrc
+                nvm install 10 && nvm alias default 10 && nvm use 10
+                npm install -g pm2 jest npm-merge-driver
+                #Install Firefox
+                sudo apt -y install firefox
+                #Install Chromium
+                sudo apt -y install chromium-browser
+                #Install vscode
+                # printf '\n\n\n\n ==============Install vscode================= \n\n\n\n'
+                sudo apt -y install software-properties-common apt-transport-https wget
+                wget -q https://packages.microsoft.com/keys/microsoft.asc -O- | sudo apt-key add -
+                sudo add-apt-repository "deb [arch=amd64] https://packages.microsoft.com/repos/vscode stable main"
+                sudo apt -y install code
+                #this solves an issue where vscode does not open via VNC
+                sudo sed -i 's/BIG-REQUESTS/_IG-REQUESTS/' /usr/lib/x86_64-linux-gnu/libxcb.so.1
+                #Create default dev folder
+                printf '\n\n\n\n ==============Create default dev folder================= \n\n\n\n'
+                mkdir ~/dev
+                mkdir ~/dev/waterfall                
+                #Setup GIT 
+                printf '\n\n\n\n ==============Setup GIT ================= \n\n\n\n'
+                git config --global http.sslVerify false
+                git config --global credential.UseHttpPath true
+                git config --global credential.helper '!aws codecommit credential-helper $@'
+                #Checkout base repos           
+                printf '\n\n\n\n ==============Checkout base repos================= \n\n\n\n'
+                git clone https://git-codecommit.eu-west-1.amazonaws.com/v1/repos/csg-cwf-frontend-service ~/dev/waterfall/frontend
+                git clone https://git-codecommit.eu-west-1.amazonaws.com/v1/repos/csg-cwf-core-service ~/dev/waterfall/core
+                git clone https://git-codecommit.eu-west-1.amazonaws.com/v1/repos/csg-cwf-calculation-service ~/dev/waterfall/calculation
+                git clone https://git-codecommit.eu-west-1.amazonaws.com/v1/repos/csg-cwf-micro-services ~/dev/waterfall/micro-services
+                git clone https://git-codecommit.eu-west-1.amazonaws.com/v1/repos/csg-cwf-shared-components ~/dev/waterfall/shared-components
+                # Install Docker
+                sudo apt -y install apt-transport-https ca-certificates curl software-properties-common
+                curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+                sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic stable"
+                apt-cache policy docker-ce
+                sudo apt -y install docker-ce
+                sudo gpasswd -a $USER docker
+                # Modify files for ENV variables and VS Code optimizations
+                cp ~/dev/waterfall/frontend/.env.example ~/dev/waterfall/frontend/.env
+                #set the CORE url to YOUR_IP:3000 instead of localhost:3000, this way external browsers can use the front end
+                PRIVATE_IP=`ip addr show eth0 | grep 'inet ' | awk '{print $2}' | cut -f1 -d'/'`
+                sudo sed -i "s/localhost/${!PRIVATE_IP}/" ~/dev/waterfall/frontend/.env
+                cp ~/dev/waterfall/core/.env.example ~/dev/waterfall/core/.env
+                cp ~/dev/waterfall/calculation/.env.example ~/dev/waterfall/calculation/.env
+                echo fs.inotify.max_user_watches=524288 >> /etc/sysctl.conf
+                # Install mattermost
+                wget https://releases.mattermost.com/desktop/4.1.2/mattermost-desktop-4.1.2-linux-amd64.deb
+                sudo dpkg -i mattermost-desktop-4.1.2-linux-amd64.deb
+                sudo apt -y --fix-broken install
+                sudo dpkg -i mattermost-desktop-4.1.2-linux-amd64.deb
+                rm mattermost-desktop-4.1.2-linux-amd64.deb
+                #Remove file marker
+                rm ~/_setup_in_progress_please_wait
+                echo "1" > ~/_setup_done
+                #Finalize
+                printf '\n ============== Restarting VM ================= \n'
+                sudo reboot
+              mode: "000777"
+              owner: "ubuntu"
+              group: "ubuntu"
+            /home/ubuntu/ec2setup/baseVcnConfig.tpl: 
+              content: !Sub | 
+                # Uncomment the following two lines for normal desktop:
+                # unset SESSION_MANAGER
+                # exec /etc/X11/xinit/xinitrc
+
+                [ -x /etc/vnc/xstartup ] && exec /etc/vnc/xstartup
+                [ -r $HOME/.Xresources ] && xrdb $HOME/.Xresources
+                xsetroot -solid grey
+                vncconfig -iconic &
+                x-terminal-emulator -geometry 80x24+10+10 -ls -title "$VNCDESKTOP Desktop" &
+                x-window-manager &
+                
+                exec /usr/bin/mate-session &
+              mode: "000644"
+              owner: "ubuntu"
+              group: "ubuntu" 
+            /home/ubuntu/setupVnc.sh:
+              content: !Sub |
+                #!/bin/bash -xe
+                if [ -d "~/.vnc" ]; then rm -r ~/.vnc; fi
+                #During manual steps when executing vncserver is asks us to run the below                
+                vncserver -geometry 1920x1080 :1                
+                vncserver –kill :1
+                cp ~/ec2setup/baseVcnConfig.tpl ~/.vnc/xstartup
+                echo 'Rebooting... reconnect in a minute and execute ./startVnc.sh '
+                sudo reboot                
+              mode: "000777"
+              owner: "ubuntu"
+              group: "ubuntu"
+            /home/ubuntu/startVnc.sh:
+              content: !Sub |
+                #!/bin/bash -xe 
+                vncserver -geometry 1920x1080 :1
+              mode: "000777"
+              owner: "ubuntu"
+              group: "ubuntu"
+            /home/ubuntu/stopVnc.sh:
+              content: !Sub |
+                #!/bin/bash -xe 
+                sudo vncserver -kill :1
+              mode: "000777"
+              owner: "ubuntu"
+              group: "ubuntu"
+        config2:
+          commands:
+            ec2Setup:                           
+              command: |
+                . ~/runMe.sh > ~/setup.log 2> ~/setup.err
+    Properties:
+      BlockDeviceMappings: 
+        - DeviceName: "/dev/sda1"
+          Ebs: 
+            VolumeType: gp2
+            DeleteOnTermination: true
+            VolumeSize: 100
+      IamInstanceProfile: !Ref InstanceProfile
+      ImageId: ami-0ac019f4fcb7cb7e6
+      InstanceType: !Ref InstanceType
+      SubnetId : !Ref EC2Subnet
+      SecurityGroupIds:
+      - !GetAtt EC2SecurityGroup.GroupId
+      KeyName: !Ref KeyName      
+      UserData: 
+        Fn::Base64: !Sub | 
+          #!/bin/bash -xe
+          #This is a hack as out EC2 is not correctly configured for DNS
+          PRIVATE_IP=`ip addr show eth0 | grep 'inet ' | awk '{print $2}' | cut -f1 -d'/' | tr '\.' '-'`
+          PRIVATE_HOSTNAME="ip-${!PRIVATE_IP}"
+          sed -i "2i127.0.0.1  ${!PRIVATE_HOSTNAME}" /etc/hosts
+          #End of hack
+          # sudo apt -y update && sudo apt -y upgrade
+          sudo apt -y update          
+          #Installs cfn-init
+          sudo apt -y install python-pip python-setuptools
+          sudo pip install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz
+          sudo su - ubuntu
+          sudo /usr/local/bin/cfn-init -v -c ascending --stack ${AWS::StackName} --resource EC2Instance --region ${AWS::Region}
+          sudo /usr/local/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource EC2Instance --region ${AWS::Region}
+          #ssh -i c:\Users\boliveira\.ssh\boliveira.pem ubuntu@10.43.33.37 -L 8888:10.43.33.37:8888
+          #sudo vncserver -geometry 1920x1080
+      Tags: 
+        - 
+          Key: Name
+          Value: !Sub "${DeveloperName}_WS"
+        - 
+          Key: BudgetCode
+          Value: "CSG / Waterfall"
+        - 
+          Key: Env
+          Value: DEV
+        - 
+          Key: EBSCostCenter
+          Value: 4059586
+        - 
+          Key: LOB
+          Value: CSG
+        - 
+          Key: AppName
+          Value: Waterfall
+        - 
+          Key: ClientData
+          Value: false
+    Type: "AWS::EC2::Instance"
+  
+Outputs:
+  InstanceId:
+    Description: InstanceId of the newly created EC2 instance
+    Value:
+      Ref: EC2Instance  
+  PrivateDNS:
+    Description: Private DNSName of the newly created EC2 instance
+    Value:
+      Fn::GetAtt:
+      - EC2Instance
+      - PrivateDnsName
+  PrivateIP:
+    Description: Private IP address of the newly created EC2 instance
+    Value:
+      Fn::GetAtt:
+      - EC2Instance
+      - PrivateIp

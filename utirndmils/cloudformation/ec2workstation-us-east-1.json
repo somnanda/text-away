@@ -1,0 +1,8 @@
+{
+    "DeveloperName": "SNanda",
+    "KeyName": "cnanda-us",
+    "InstanceType": "t2.xlarge",
+    "VpcId": "vpc-a4e6eddc",
+    "EC2Subnet": "subnet-7e701c51",
+    "RDPCidr": "10.0.0.0/8"
+}

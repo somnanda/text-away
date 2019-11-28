@@ -1,0 +1,30 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Resources:
+
+  LambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code: 
+        S3Bucket: "awf-lambda-functions"
+        S3Key: "awf-calculator-batch-producer.zip"
+      Runtime: nodejs6.10
+  
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: 'awf-calc-lbdexec-dev'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+          Action:
+          - sts:AssumeRole      
+      ManagedPolicyArns: 
+        - 'arn:aws:iam::911962207156:policy/CSG-LambdaLogFileWrite'
+
+  

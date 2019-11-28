@@ -1,0 +1,7 @@
+{
+    "EC2Subnet": "subnet-49b68800",
+    "InstanceType": "t2.micro",
+    "KeyName": "boliveira",
+	"VpcId": "vpc-347a7953"
+}
+

@@ -1,0 +1,15 @@
+{
+  "name": "cloudformationtemplates",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cmd-promise": "^1.2.0",
+    "csg-cwf-shared-components": "git+https://git-codecommit.eu-west-1.amazonaws.com/v1/repos/csg-cwf-shared-components"
+  }
+}

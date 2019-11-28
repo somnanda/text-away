@@ -1,0 +1,11 @@
+{
+	"VpcId": "vpc-347a7953",
+	"Tor1SubnetCIDR": "10.124.108.0/24",	
+	"EC2Subnet": "subnet-49b68800",	
+    "TagEnvironment":"DEV",
+    "TagBudgetCode":"TDB",
+    "TagSystem":"WFD",
+    "TagTeam":"WATERFALL",
+	"KeyName": "awf-default",
+	"InstanceType": "t2.micro"	
+}

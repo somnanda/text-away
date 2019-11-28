@@ -1,0 +1,217 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: A basic CloudFormation template for an RDS Aurora cluster.
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id    
+    Description: The VPC this RDS DB should be deployed to.    
+  TagSystem:
+    Type: String
+    Description: Name of IT system
+  TagBudgetCode:
+    Type: String
+    Description: EBS Code
+  TagEnvironment:
+    Type: String
+    Description: E.g. DEV, IST, QAT, UAT, PRD, DR, PAL (parralel)
+  TagTeam:
+    Type: String
+    Description: Name of The Team That Owns the resources
+  Tor1SubnetCIDR:
+    Description: TOR 1 IP range so developers can access the DB
+    Type: String    
+  JscSubnetCIDR:
+    Description: Jersey city IP range so developers can access the DB
+    Type: String    
+  BrnSubnetCIDR:
+    Description: Bern city IP range so developers can access the DB
+    Type: String      
+  SubnetGroup:
+    Description: Subnet group for the rds instance
+    Type: String      
+  DatabaseInstanceName:    
+    Description: The instance type to use for the database.
+    Type: String        
+  DatabaseInstanceType:    
+    AllowedValues:
+      - db.r4.large
+      - db.r4.xlarge
+      - db.r4.2xlarge
+      - db.r4.4xlarge
+      - db.r4.8xlarge
+      - db.r4.16xlarge
+    Description: The instance type to use for the database.
+    Type: String    
+  DatabasePassword:
+    AllowedPattern: "[a-zA-Z0-9]+"
+    ConstraintDescription: must contain only alphanumeric characters.
+    Description: The database admin account password.
+    MaxLength: '41'
+    MinLength: '8'
+    NoEcho: 'true'
+    Type: String
+  DatabaseUsername:
+    AllowedPattern: "[a-zA-Z0-9_]+"
+    ConstraintDescription: must contain only alphanumeric characters.
+    Description: The database admin account user name.
+    MaxLength: '16'
+    MinLength: '1'
+    Type: String
+  DatabaseName:
+    AllowedPattern: "[a-zA-Z0-9]+"
+    ConstraintDescription: must contain only alphanumeric characters.
+    Description: The database admin account user name.
+    MaxLength: '16'
+    MinLength: '1'
+    Type: String
+  DatabaseClusterName:
+    AllowedPattern: "[a-zA-Z0-9]+"
+    ConstraintDescription: must contain only alphanumeric characters.
+    Description: The database admin account user name.
+    MaxLength: '16'
+    MinLength: '1'
+    Type: String
+  DatabaseBackupRetentionPeriod:
+    Type: String
+    Default: 30
+    AllowedValues:
+      - 1
+      - 30
+    Description: The database backup retention period in days.
+  DatabaseSubnets:
+    Description: The subnets to place database instances in.
+    Type: List<AWS::EC2::Subnet::Id>  
+Resources:
+  RdsSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref VpcId
+      GroupDescription: Enable TCP access for port 5432
+      SecurityGroupIngress:      
+      - CidrIp: !Ref Tor1SubnetCIDR
+        FromPort: 5432
+        IpProtocol: tcp
+        ToPort: 5432  
+      - CidrIp: !Ref JscSubnetCIDR
+        FromPort: 5432
+        IpProtocol: tcp
+        ToPort: 5432 
+      - CidrIp: !Ref BrnSubnetCIDR
+        FromPort: 5432
+        IpProtocol: tcp
+        ToPort: 5432  
+      - CidrIp: 10.43.40.0/21
+        FromPort: 5432
+        IpProtocol: tcp
+        ToPort: 5432  
+      - CidrIp: 10.43.32.0/21
+        FromPort: 5432
+        IpProtocol: tcp
+        ToPort: 5432  
+      - CidrIp: 10.43.72.0/21
+        FromPort: 5432
+        IpProtocol: tcp
+        ToPort: 5432  
+      - CidrIp: 10.43.64.0/21
+        FromPort: 5432
+        IpProtocol: tcp
+        ToPort: 5432
+        
+      Tags:
+        -
+          Key: Name
+          Value: !Join
+                   - '-'
+                   - - !Ref TagEnvironment
+                     - !Ref TagSystem
+                     - 'RDS-Security-Group'            
+        -
+          Key: Environment
+          Value: !Ref TagEnvironment
+        -
+          Key: BudgetCode
+          Value: !Ref TagBudgetCode
+        -
+          Key: System
+          Value: !Ref TagSystem
+        -
+          Key: Team
+          Value: !Ref TagTeam
+  DatabaseCluster:
+    Type: AWS::RDS::DBCluster
+    Properties:
+      Engine: aurora-postgresql
+      Port: 5432
+      DatabaseName: !Ref DatabaseClusterName
+      DBClusterParameterGroupName: default.aurora-postgresql9.6
+      MasterUsername:
+        Ref: DatabaseUsername
+      MasterUserPassword:
+        Ref: DatabasePassword
+      BackupRetentionPeriod:
+        Ref: DatabaseBackupRetentionPeriod
+      PreferredBackupWindow: 02:00-03:00
+      PreferredMaintenanceWindow: mon:03:00-mon:04:00
+      DBSubnetGroupName:
+        Ref: SubnetGroup
+      VpcSecurityGroupIds:
+        -
+          Ref: RdsSecurityGroup
+      Tags:
+        -
+          Key: Name
+          Value: !Join
+                   - '-'
+                   - - !Ref TagEnvironment
+                     - !Ref TagSystem
+                     - 'RDS-Security-Group'            
+        -
+          Key: Environment
+          Value: !Ref TagEnvironment
+        -
+          Key: BudgetCode
+          Value: !Ref TagBudgetCode
+        -
+          Key: System
+          Value: !Ref TagSystem
+        -
+          Key: Team
+          Value: !Ref TagTeam
+  DatabasePrimaryInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      Engine: aurora-postgresql      
+      PubliclyAccessible : false
+      DBInstanceIdentifier: 
+        Ref: DatabaseInstanceName      
+      DBClusterIdentifier:
+        Ref: DatabaseCluster
+      DBInstanceClass:
+        Ref: DatabaseInstanceType
+      DBSubnetGroupName:
+        Ref: SubnetGroup
+      Tags:
+        -
+          Key: Name
+          Value: !Join
+                   - '-'
+                   - - !Ref TagEnvironment
+                     - !Ref TagSystem
+                     - 'RDS-Security-Group'            
+        -
+          Key: Environment
+          Value: !Ref TagEnvironment
+        -
+          Key: BudgetCode
+          Value: !Ref TagBudgetCode
+        -
+          Key: System
+          Value: !Ref TagSystem
+        -
+          Key: Team
+          Value: !Ref TagTeam
+Outputs:
+  DbEndPoint:
+    Description: Information about the value
+    Value:  !GetAtt DatabaseCluster.Endpoint.Address
+    Export:
+      Name: dbEndPoint

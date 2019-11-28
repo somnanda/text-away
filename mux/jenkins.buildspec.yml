@@ -1,0 +1,20 @@
+version: 0.2
+
+phases:
+  install:
+    commands:
+      - apt-get update
+      - apt-get install zip -y
+      - echo "INSTALL DEPENDENCIES"
+      - apt install python2.7 python-pip -y
+  pre_build:
+    commands:
+      - echo "PRE-BUILD ACTIONS"
+  build:
+    commands:
+      - echo "BUILD ACTIONS"
+      - python trigger-jenkins.py $NODE_ENV
+artifacts:
+  files:
+    - '**/*'
+  type: None

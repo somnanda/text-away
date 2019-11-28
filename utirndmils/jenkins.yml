@@ -1,0 +1,338 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  Creates an Autoscaling group and Launch config. Spins up EC2 Instance(s) and
+  tags them. It further tags attached Root EBS volume from userdata script.
+Parameters:
+  KeyName:
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instances
+    Type: String
+    MinLength: '1'
+    MaxLength: '64'
+    AllowedPattern: '[-_ a-zA-Z0-9]*'
+    Default: HBrahmbhatt-key
+  EC2InstanceType:
+    Description: Instance type to use for EC2 Instance.
+    Type: String
+    Default: t2.large
+    AllowedValues:
+      - t2.medium
+      - t2.large
+  StackMinSize:
+    Description: Minimum number of instances in stack.
+    Type: String
+    Default: '1'
+  AppNameTag:
+    Description: 'Subsystem. Citco Water Fall '
+    Type: String
+    Default: Water Fall
+  LOBTag:
+    Description: LOB Details
+    Type: String
+    Default: CSG
+    AllowedValues:
+      - CBS
+      - HR
+      - OPS
+      - SAE
+      - FIN
+      - SEC
+      - CSG
+      - FOF
+      - RE
+      - MKD
+      - TAX
+      - FSR
+      - PE
+      - RISK
+      - HF
+      - CTS
+  BudgetCodeTag:
+    Description: Budget Code Details
+    Type: String
+    Default: CSG / Waterfall
+    AllowedValues:
+      - CSG / A.5 - Payments
+      - CSG / A.5 - Engine
+      - CSG / Waterfall
+      - CSG / Data Services
+  ClientDataTag:
+    Description: Client Data
+    Type: String
+    Default: 'true'
+    AllowedValues:
+      - 'true'
+      - 'false'
+  EBSCostCenterTag:
+    Description: EBS Cost Center
+    Type: String
+    Default: '4059586'
+    AllowedValues:
+      - '4053191'
+      - '4041882'
+      - '4059586'
+      - '4059657'
+  EnvironmentTag:
+    Description: Select Environment
+    Type: String
+    Default: DEV
+    AllowedValues:
+      - DEV
+      - IST
+      - QA
+      - UAT
+      - PRD
+      - PAL
+      - DEVDR
+      - ISTDR
+      - QADR
+      - UATDR
+      - PRDDR
+      - PALDR
+Mappings:
+  DEV:
+    eu-west-1:
+      VpcID: vpc-347a7953
+      AvailabilityZone1: eu-west-1a
+      AvailabilityZone2: eu-west-1b
+      EC2AMI: ami-f3fcfa8a
+      EC2SecGroup: sg-79c4b904
+      PriSubnet1: subnet-49b68800
+      PriSubnet2: subnet-645e2f3f
+Resources:
+  JenkinsSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: CWF Jenkins Security Group
+      VpcId: !FindInMap 
+        - !Ref EnvironmentTag
+        - !Ref 'AWS::Region'
+        - VpcID
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '8080'
+          ToPort: '8080'
+          CidrIp: 10.124.0.0/16
+        - IpProtocol: tcp
+          FromPort: '22'
+          ToPort: '22'
+          CidrIp: 10.124.0.0/16
+        - IpProtocol: tcp
+          FromPort: '8080'
+          ToPort: '8080'
+          CidrIp: 10.204.0.0/15
+        - IpProtocol: tcp
+          FromPort: '22'
+          ToPort: '22'
+          CidrIp: 10.204.0.0/15
+        - IpProtocol: tcp
+          FromPort: '8080'
+          ToPort: '8080'
+          CidrIp: 10.128.0.0/14
+        - IpProtocol: tcp
+          FromPort: '22'
+          ToPort: '22'
+          CidrIp: 10.128.0.0/14
+        - IpProtocol: tcp
+          FromPort: '8080'
+          ToPort: '8080'
+          CidrIp: 172.23.0.0/15
+        - IpProtocol: tcp
+          FromPort: '22'
+          ToPort: '22'
+          CidrIp: 172.23.0.0/15
+      Tags:
+        - Key: AppName
+          Value: !Sub '${AppNameTag}'
+        - Key: EBSCostCenter
+          Value: !Sub '${EBSCostCenterTag}'
+        - Key: BudgetCode
+          Value: !Sub '${BudgetCodeTag}'
+        - Key: ClientData
+          Value: !Sub '${ClientDataTag}'
+        - Key: Env
+          Value: !Sub '${EnvironmentTag}'
+        - Key: LOB
+          Value: !Sub '${LOBTag}'
+        - Key: Name
+          Value: !Sub CWF-Jenkins-SecurityGroup
+  EC2Role:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      ManagedPolicyArns: 
+        - "arn:aws:iam::aws:policy/IAMFullAccess"
+        - "arn:aws:iam::aws:policy/AWSCodeCommitPowerUser"
+        - "arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess"
+        - "arn:aws:iam::aws:policy/CloudWatchFullAccess"
+        - "arn:aws:iam::aws:policy/AmazonEC2FullAccess"
+        - "arn:aws:iam::aws:policy/AWSXrayFullAccess"
+      Path: /
+  EC2Policy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: EC2Policy
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Action:
+              - 'ec2:DescribeInstances'
+              - 'ec2:DescribeVolumes'
+              - 'ec2:CreateTags'
+              - 'ec2:DeleteTags'
+              - 'elasticloadbalancing:DescribeLoadBalancers'
+            Effect: Allow
+            Resource:
+              - '*'
+          - Action:
+              - 'codecommit:List*'
+              - 'codecommit:BatchGetRepositories'
+              - 'codecommit:Get*'
+              - 'codecommit:GitPull'
+            Resource:
+              - 'arn:aws:codecommit:eu-west-1:911962207156:*cwf*'
+              - 'arn:aws:codecommit:eu-west-1:911962207156:*CWF*'
+            Effect: Allow
+          - Action:
+              - 'codepipeline:*'
+            Resource:
+              - '*'
+            Effect: Allow
+          - Action:
+              - 's3:*'
+              - 'lambda:*'
+              - 'dynamodb:*'
+            Resource:
+              - '*'
+            Effect: Allow
+      Roles:
+        - !Ref EC2Role
+  EC2InstanceProfile:
+    Type: 'AWS::IAM::InstanceProfile'
+    Properties:
+      Path: /
+      Roles:
+        - !Ref EC2Role
+  LaunchConfig:
+    Type: 'AWS::AutoScaling::LaunchConfiguration'
+    Properties:
+      AssociatePublicIpAddress: 'false'
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeSize: '50'
+      ImageId: !FindInMap 
+        - !Ref EnvironmentTag
+        - !Ref 'AWS::Region'
+        - EC2AMI
+      KeyName: !Ref KeyName
+      SecurityGroups:
+        - !Ref JenkinsSecurityGroup
+      InstanceType: !Ref EC2InstanceType
+      IamInstanceProfile: !Ref EC2InstanceProfile
+      UserData: !Base64 
+        'Fn::Join':
+          - ''
+          - - '#!/bin/bash'
+            - |+
+
+            - '#### Snippet to add tags to Root EBS volume attached with EC2 ####'
+            - |+
+
+            - >-
+              #### Pre-Requisites: Attach EC2 role with ec2:DescribeInstances,
+              ec2:DescribeVolumes, ec2:CreateTags, ec2:DeleteTags ####
+            - |+
+
+            - >-
+              AWS_INSTANCE_ID=$( curl -s
+              http://169.254.169.254/latest/meta-data/instance-id)
+            - |+
+
+            - >-
+              EC2_REGION=$( curl -s
+              http://169.254.169.254/latest/meta-data/placement/availability-zone
+              | sed 's/.$//')
+            - |+
+
+            - >-
+              ROOT_DISK_ID=$(aws ec2 describe-volumes --filter
+              Name=attachment.instance-id,Values=${AWS_INSTANCE_ID} --query
+              'Volumes[*].{ID:VolumeId}' --out text --region ${EC2_REGION})
+            - |+
+
+            - 'aws ec2 create-tags --resources ${ROOT_DISK_ID} --tags '
+            - '   "Key=AppName,Value='
+            - !Ref AppNameTag
+            - '"'
+            - '   "Key=LOB,Value='
+            - !Ref LOBTag
+            - '"'
+            - '   "Key=BudgetCode,Value='
+            - !Ref BudgetCodeTag
+            - '"'
+            - '   "Key=ClientData,Value='
+            - !Ref ClientDataTag
+            - '"'
+            - '   "Key=EBSCostCenter,Value='
+            - !Ref EBSCostCenterTag
+            - '"'
+            - '   "Key=Env,Value='
+            - !Ref EnvironmentTag
+            - '"'
+            - '   --region ${EC2_REGION}'
+            - |+
+
+  AutoScaleGroup:
+    Type: 'AWS::AutoScaling::AutoScalingGroup'
+    Properties:
+      VPCZoneIdentifier:
+        - !FindInMap 
+          - !Ref EnvironmentTag
+          - !Ref 'AWS::Region'
+          - PriSubnet1
+        - !FindInMap 
+          - !Ref EnvironmentTag
+          - !Ref 'AWS::Region'
+          - PriSubnet2
+      AvailabilityZones:
+        - !FindInMap 
+          - !Ref EnvironmentTag
+          - !Ref 'AWS::Region'
+          - AvailabilityZone1
+        - !FindInMap 
+          - !Ref EnvironmentTag
+          - !Ref 'AWS::Region'
+          - AvailabilityZone2
+      LaunchConfigurationName: !Ref LaunchConfig
+      MinSize: '1'
+      MaxSize: '1'
+      Tags:
+        - Key: AppName
+          Value: !Sub '${AppNameTag}'
+          PropagateAtLaunch: 'true'
+        - Key: EBSCostCenter
+          Value: !Sub '${EBSCostCenterTag}'
+          PropagateAtLaunch: 'true'
+        - Key: BudgetCode
+          Value: !Sub '${BudgetCodeTag}'
+          PropagateAtLaunch: 'true'
+        - Key: ClientData
+          Value: !Sub '${ClientDataTag}'
+          PropagateAtLaunch: 'true'
+        - Key: Env
+          Value: !Sub '${EnvironmentTag}'
+          PropagateAtLaunch: 'true'
+        - Key: LOB
+          Value: !Sub '${LOBTag}'
+          PropagateAtLaunch: 'true'
+        - Key: Name
+          Value: !Sub CWF-Jenkins
+          PropagateAtLaunch: 'true'
+Outputs: {}

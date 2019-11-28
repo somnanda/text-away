@@ -1,0 +1,8 @@
+{
+    "DeveloperName": "SomNanda",
+    "KeyName": "cnanda-eu",
+    "InstanceType": "t2.xlarge",
+    "VpcId": "vpc-347a7953",
+    "EC2Subnet": "subnet-49b68800",
+    "RDPCidr": "10.0.0.0/8"
+}

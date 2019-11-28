@@ -1,0 +1,130 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: Creates an ec2 instance to run our node application
+
+Parameters:
+
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: The VPC.
+
+  CitcoCidrBlock1:
+    Description: CIDR block for resource access from Citco network
+    Type: String
+
+  CitcoCidrBlock2:
+    Description: CIDR block for resource access from Citco network
+    Type: String
+
+  CitcoCidrBlock3:
+    Description: CIDR block for resource access from Citco network
+    Type: String
+
+  CitcoCidrBlock4:
+    Description: CIDR block for resource access from Citco network
+    Type: String
+
+  EC2Subnet:
+    Description: The subnets to place database instances in.
+    Type: String
+
+  KeyName:
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
+    Type: AWS::EC2::KeyPair::KeyName
+    ConstraintDescription: must be the name of an existing EC2 KeyPair.
+
+  InstanceType:
+    Description: WebServer EC2 instance type
+    Type: String
+    Default: t2.large
+
+Resources:
+
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref InstanceType
+      SubnetId : !Ref EC2Subnet
+      SecurityGroupIds:
+      - !GetAtt InstanceSecurityGroup.GroupId
+      KeyName: !Ref KeyName
+      ImageId: ami-58d7e821
+      Tags:
+        -
+          Key: Name
+          Value: CWF-HB-EC2-Ubuntu //Update the Value
+        -
+          Key: AppName
+          Value: Waterfall
+        -
+          Key: BudgetCode
+          Value: CSG / Waterfall
+        -   
+          Key: Env
+          Value: DEV
+        -   
+          Key: EBSCostCenter
+          Value: 4059586
+        -
+          Key: LOB
+          Value: CSG
+        
+  InstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref VpcId
+      GroupDescription: Enable SSH access via port 22
+      SecurityGroupIngress:
+      - CidrIp: !Ref CitcoCidrBlock1
+        IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22
+        Description: Citco 1
+      - CidrIp: !Ref CitcoCidrBlock2
+        IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22
+        Description: Citco 2
+      - CidrIp: !Ref CitcoCidrBlock3
+        IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22
+        Description: Citco 3
+      - CidrIp: !Ref CitcoCidrBlock4
+        IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22
+        Description: Citco 4
+      - CidrIp: !Ref CitcoCidrBlock1
+        IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        Description: Citco 5
+
+Outputs:
+
+  InstanceId:
+    Description: InstanceId of the newly created EC2 instance
+    Value:
+      Ref: EC2Instance
+
+  AZ:
+    Description: Availability Zone of the newly created EC2 instance
+    Value:
+      Fn::GetAtt:
+      - EC2Instance
+      - AvailabilityZone
+
+  PrivateDNS:
+    Description: Public DNSName of the newly created EC2 instance
+    Value:
+      Fn::GetAtt:
+      - EC2Instance
+      - PrivateDnsName
+
+  PrivateIP:
+    Description: Public IP address of the newly created EC2 instance
+    Value:
+      Fn::GetAtt:
+      - EC2Instance
+      - PrivateIp

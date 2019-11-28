@@ -1,0 +1,237 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: Creates an ec2 instance to run our node application
+
+Parameters:
+
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: The VPC.
+
+  EC2Subnet:
+    Description: The subnets to place database instances in.
+    Type: String
+
+  KeyName:
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
+    Type: AWS::EC2::KeyPair::KeyName
+    ConstraintDescription: must be the name of an existing EC2 KeyPair.
+
+  InstanceType:
+    Description: WebServer EC2 instance type
+    Type: String
+    Default: t2.micro
+
+Resources:
+
+  MMRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: /
+      RoleName: cwf-mattermostpoc
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - "sts:AssumeRole"
+      Policies:
+        -
+          PolicyName: s3
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              -
+                Effect: Allow
+                Action:
+                  - "s3:PutObject"
+                  - "s3:GetObject"
+                  - "s3:AbortMultipartUpload"
+                  - "s3:ListMultipartUploadParts"
+                  - "s3:ListBucket"
+                  - "s3:ListBucketMultipartUploads"
+                Resource:
+                  - "*"  
+#  S3AccessRole:
+#    Type: AWS::IAM::Role
+#    Properties:
+#      RoleName: 'cwf-mattermost-poc'
+#      AssumeRolePolicyDocument:
+#        Version: '2012-10-17'
+#        Statement:
+#        - Effect: Allow
+#          Principal:
+#            Service:
+#              - ec2.amazonaws.com
+#          Action:
+#            - 'sts:AssumeRole'
+#      ManagedPolicyArns: 
+#        - 'arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess'  
+
+  S3InstanceProfile:
+    Type: 'AWS::IAM::InstanceProfile'
+    Properties:
+      Path: /
+      Roles:
+        - !Ref MMRole
+
+# MattermostBucket:
+#   Type: AWS::S3::Bucket
+#   Properties:
+#     BucketName: cwf-mattermostpoc
+#     Tags:
+#         -
+#           Key: Name
+#           Value: MattermostPOC_S3Bucket
+#         -
+#           Key: AppName
+#           Value: Waterfall
+#         -
+#           Key: BudgetCode
+#           Value: CSG / Waterfall
+#         -   
+#           Key: Env
+#           Value: DEV
+#         -   
+#           Key: EBSCostCenter
+#           Value: 4059586
+#         -
+#           Key: LOB
+#           Value: CSG  
+#   DeletionPolicy: Retain        
+        
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref InstanceType
+      SubnetId : !Ref EC2Subnet
+      SecurityGroupIds:
+      - !GetAtt InstanceSecurityGroup.GroupId
+      KeyName: !Ref KeyName
+      ImageId: ami-ca0135b3
+      IamInstanceProfile: !Ref S3InstanceProfile
+      UserData:
+        Fn::Base64: !Sub |          
+          #!/bin/bash 
+          sudo yum install docker -y
+          sudo service docker start
+          sudo usermod -a -G docker ec2-user
+          sudo docker run --name mattermost-preview -d --publish 8065:8065 -p 443:443 mattermost/mattermost-preview
+      Tags:
+        -
+          Key: Name
+          Value: MattermostPOC
+        -
+          Key: AppName
+          Value: Waterfall
+        -
+          Key: BudgetCode
+          Value: CSG / Waterfall
+        -   
+          Key: Env
+          Value: DEV
+        -   
+          Key: EBSCostCenter
+          Value: 4059586
+        -
+          Key: LOB
+          Value: CSG
+    
+  ###### ROUTE53 DNS ######
+  Route53:
+    Type: "AWS::Route53::RecordSet"
+    Properties: 
+        Name: mattermostpoc.int.csgdev01.citcosvc.com
+        HostedZoneId: Z3GICL1TRBQ23N
+        Type: A
+        TTL: 900
+        ResourceRecords: 
+        - !GetAtt EC2Instance.PrivateIp
+    
+  InstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref VpcId
+      GroupDescription: Enable SSH access via port 22
+      SecurityGroupIngress:
+      - CidrIp: 10.0.0.0/8
+        IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22        
+      - CidrIp: 10.0.0.0/8
+        IpProtocol: tcp
+        FromPort: 8065
+        ToPort: 8065
+      - CidrIp: 10.0.0.0/8
+        IpProtocol: tcp
+        FromPort: 443
+        ToPort: 443
+      - CidrIp: 10.0.0.0/8
+        IpProtocol: icmp
+        FromPort: 8
+        ToPort: -1
+      - CidrIp: 172.23.128.0/22
+        IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22        
+      - CidrIp: 172.23.128.0/22
+        IpProtocol: tcp
+        FromPort: 8065
+        ToPort: 8065        
+      - CidrIp: 172.23.128.0/22
+        IpProtocol: tcp
+        FromPort: 443
+        ToPort: 443
+      - CidrIp: 172.23.128.0/22
+        IpProtocol: icmp
+        FromPort: 8
+        ToPort: -1
+      - CidrIp: 172.23.24.0/22
+        IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22        
+      - CidrIp: 172.23.24.0/22
+        IpProtocol: tcp
+        FromPort: 8065
+        ToPort: 8065
+      - CidrIp: 172.23.24.0/22
+        IpProtocol: tcp
+        FromPort: 443
+        ToPort: 443  
+      - CidrIp: 172.23.24.0/22
+        IpProtocol: icmp
+        FromPort: 8
+        ToPort: -1
+        
+
+Outputs:
+
+  InstanceId:
+    Description: InstanceId of the newly created EC2 instance
+    Value:
+      Ref: EC2Instance
+
+  AZ:
+    Description: Availability Zone of the newly created EC2 instance
+    Value:
+      Fn::GetAtt:
+      - EC2Instance
+      - AvailabilityZone
+
+  PrivateDNS:
+    Description: Public DNSName of the newly created EC2 instance
+    Value:
+      Fn::GetAtt:
+      - EC2Instance
+      - PrivateDnsName
+
+  PrivateIP:
+    Description: Public IP address of the newly created EC2 instance
+    Value:
+      Fn::GetAtt:
+      - EC2Instance
+      - PrivateIp

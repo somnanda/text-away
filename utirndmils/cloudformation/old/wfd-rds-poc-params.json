@@ -1,0 +1,18 @@
+{
+	"VpcId": "vpc-347a7953",
+	"Tor1SubnetCIDR": "10.124.108.0/24",
+	"JscSubnetCIDR": "10.124.142.0/24",
+	"BrnSubnetCIDR": "10.125.87.0/24",	
+	"SubnetGroup": "aps-mssql-creation-dbsubnetgroup-1v2c58e08od79",
+	"DatabaseSubnets": ["subnet-5c5c2d07","subnet-fabe80b3"],
+	"DatabaseInstanceType": "db.r4.xlarge",
+	"DatabaseClusterName": "wfdPocRdsCluster",
+	"DatabaseName": "wfdPocRds", 
+	"DatabaseUsername": "wfdPocRds",
+	"DatabasePassword": "360Citco630", 
+	"DatabaseInstanceName": "wfd-poc-rds",	
+    "TagEnvironment":"DEV",
+    "TagBudgetCode":"TDB",
+    "TagSystem":"WFD",
+    "TagTeam":"WATERFALL"
+}
