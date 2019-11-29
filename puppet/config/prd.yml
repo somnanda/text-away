@@ -1,0 +1,8 @@
+env:
+  url: https://waterfall.prd.int.csgprod01.citcosvc.com
+  vault: PRD-CWF-SYNTHETICCHECKUSER
+  nexa: https://services-ext.citco.com/alert/48
+timeouts:
+  default_timeout: 5000
+  short_timeout: 5000
+  long_timeout: 60000

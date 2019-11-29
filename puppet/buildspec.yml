@@ -1,0 +1,46 @@
+version: 0.2
+
+phases:
+  install:
+    commands:
+      # - apt-get -y update
+      # - apt-get -y install python3 python3-pip jq zip
+      - find . ./infrastructure/lambda -maxdepth 2 ! -path "." -type f -name "package.json" -exec sed -i -e "s/git-codecommit\.eu-west-1/git-codecommit\.$AWS_REGION/g" {} \;
+      - echo "started build"
+      - cd $CODEBUILD_SRC_DIR
+      - echo "$CODEBUILD_SOURCE_VERSION"
+      - s3path_previous_stage=${CODEBUILD_SOURCE_VERSION#*:::}
+      - s3arn=$(aws codebuild batch-get-builds --ids $CODEBUILD_BUILD_ID --output text --query "builds[*].artifacts[].location")
+      - s3path=${s3arn#*:::}
+      - s3bucket=${s3path%%/*}
+      - echo "$s3path"
+      - echo "$s3bucket"
+      - echo "$CMKARN"
+      
+  pre_build:
+    commands:
+      - echo "Running pre-build, Running unit test"
+
+  build:
+    commands:
+      - echo "Build lambda dependencies"
+      - temp_role="$(aws sts assume-role --role-arn arn:aws:iam::911962207156:role/csg-cwf-devops-code-commit-cross-account-role-$AWS_REGION --role-session-name cwf-bootstrap-repo-access)"
+      - git config --global credential.helper "!aws codecommit credential-helper $@"
+      - git config --global credential.UseHttpPath true
+      - git config --global http.sslVerify false
+      - export AWS_ACCESS_KEY_ID=$(echo $temp_role | jq .Credentials.AccessKeyId | xargs)
+      - export AWS_SECRET_ACCESS_KEY=$(echo $temp_role | jq .Credentials.SecretAccessKey | xargs)
+      - export AWS_SESSION_TOKEN=$(echo $temp_role | jq .Credentials.SessionToken | xargs)
+      - sh dependency.packager.sh "$s3bucket"
+      - unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
+      - ls -la ./infrastructure/lambda/smoke-test/
+      - ls -la ./infrastructure/lambda/smoke-test/node_modules
+      - cd ./infrastructure
+      - echo "Building lambda SAM template"
+      - aws cloudformation package --template csg-cwf.inf.stack1.waterfall-monitoring-lambdas.yml  --s3-bucket $s3bucket --s3-prefix lambda --output-template package.csg-cwf.inf.stack1.waterfall-monitoring-lambdas.yml
+      - cd ..
+      
+artifacts:
+  files:
+    - '**/*'
+  type: None  
